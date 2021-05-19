@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
-global colorState,mayoState
+import glob
 #메뉴 구성
 
 # gray world white balancing
@@ -30,7 +30,6 @@ def whiteBalance(img):
     balance_img = cv2.merge([r, g, b])
     
     return balance_img
-
 #mayo score
 def mayo (hsv,stool):
     
@@ -101,8 +100,7 @@ def find_histogram(model):
     
 
     return hist
-
-
+#color processing
 def color(img,hsv,seg,hist, centroids):
    
     #dominant color bar setting
@@ -178,11 +176,10 @@ def color(img,hsv,seg,hist, centroids):
         colorState= str("Stool은 적(Red)입니다!!!")
         lower, upper = bound(color_hsv)
     
-    stool,contourSample = stoolOnly(img,seg,lower,upper)
+    stool,contourSample,stoolState = stoolOnly(img,seg,lower,upper)
     mayoState=mayo(hsv,stool)
     
-    return bar,contourSample,mayoState,colorState
-
+    return bar,contourSample,mayoState,colorState,stoolState
 # hsv의 범위에 따라 해당 영역 추출 과정 시각화 함수
 def stoolOnly(img,hsv,lower,upper):
         
@@ -213,12 +210,13 @@ def stoolOnly(img,hsv,lower,upper):
     cv2.imshow("Close + Open", result3)
     cv2.imshow("Canny",canny)
     
+    stoolState = contourSimilarity(contours)
+    
     # red contour drawing    
     for i in range(len(contours)):
         cv2.drawContours(img, [contours[i]], 0, (0, 0, 255), 2)
         cv2.imshow("src", img) 
-    return result3 , contours
-
+    return result3 , contours, stoolState
 #dominant stool color에 대한 임의의 범위 설정
 def bound(color_hsv):
         color_hsv_ = color_hsv.astype("uint8").tolist()
@@ -257,8 +255,39 @@ def bound(color_hsv):
         upper = (h+hd,s+sd,v+vd)
         #print("dominant color의 범위는", lower, upper)
         return lower , upper
+#similarity
+def contourSimilarity(contourSample):
+    location = './canny/*.jpg'
+    path = glob.glob(location)
+    bristol_img = []
+    # canny들 불러오
+    for img in path:
+        n = cv2.imread(img,cv2.IMREAD_GRAYSCALE)
+        bristol_img.append(n)
+    best_score = float('inf')
+    best_score_number = 0
+    # 7개의 canny edge 이미지를 저장하여 여기서 contour한 후 유사도를 각각 비교
+    for i in range (len(bristol_img)):
+        contours, hierarchy = cv2.findContours(bristol_img[i], 2,1)
+        similarity = cv2.matchShapes(bristol_img[i],contourSample[0],1,0)
+        if best_score > similarity:
+            best_score = similarity
+            best_score_number = i
 
+    state_number = (best_score_number // 2) + 1
+  
+    if state_number == 1 or state_number ==2 or state_number ==3:
+        stoolState = "변비"
+    if state_number == 4 or state_number ==5:
+        stoolState = "정상"
+    if state_number == 6 or state_number ==7:
+        stoolState = "설사"
+
+    return stoolState
+
+#segmentation
 def segmentation(img , K):
+    
 
     Z = img.reshape((-1,3))
     # convert to np.float32
@@ -273,7 +302,7 @@ def segmentation(img , K):
     res2 = res.reshape((img.shape))
     
     return res2
-
+#K determination
 def elbow(X):
     X = X.reshape((X.shape[0] * X.shape[1],3)) #represent as row*column,channel number
     sse = []
@@ -289,7 +318,7 @@ def elbow(X):
             K = i
             break
     return K + 2 
-
+#main
 def main(file_record):
    
     print("© 2021 Bowelog <contact@bowelog.com>")
@@ -312,25 +341,30 @@ def main(file_record):
     
     #bar print
     hist = find_histogram(model) 
-    global mayoState,colorState
-    bar,contourSample,mayoState,colorState = color(img ,hsv, seg2, hist, model.cluster_centers_)
+    global mayoState,colorState,mayoState2,stoolState
+    bar,contourSample,mayoState,colorState,stoolState = color(img ,hsv, seg2, hist, model.cluster_centers_)
     cv2.imshow("bar",bar)
-
-def result(colorState,mayoState):
+#분석 result
+def result(colorState,mayoState,mayoState2,stoolState):
     
     label_C.config(text = colorState)
     label_M.config(text = mayoState)
+    label_M2.config(text = mayoState2)
+    label_St.config(text = stoolState)
     
-#open 기능
+#open file 기능
 def OpenFile(file_record):
     file_record['image'] =  askopenfilename(title = "Select file",filetypes = (("image files1","*.JPG"), ("image files2","*.gif")))
     print(file_record['image'])
-
 
 root = Tk()
 filename_record = {}
 colorState = {}
 mayoState = {}
+
+mayoState2 = {}
+stoolState = {}
+
 root.title("Bowelog")
 root.geometry("500x400")
 root.resizable(0,0)
@@ -353,13 +387,16 @@ cutestool = PhotoImage(file = "cutestool.gif")
 btn = Button(root,text = "분석", image = cutestool, command = lambda: main(filename_record))
 btn.pack()
 
-btn2 = Button(root,text = "결과",command = lambda: result(colorState,mayoState))
+btn2 = Button(root,text = "결과",command = lambda: result(colorState,mayoState,mayoState2,stoolState))
 btn2.pack()
 
 label_C = Label(root,text = "color")
 label_M = Label(root,text = "mayo score")
+label_M2 = Label(root,text = "mayo state")
+label_St = Label(root,text = "Stool State")
 label_C.pack()
 label_M.pack()
-
+label_M2.pack()
+label_St.pack()
 root.mainloop()
 
