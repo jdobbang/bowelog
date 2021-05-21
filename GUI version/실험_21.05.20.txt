@@ -1,0 +1,107 @@
+실험 진행
+
+type 폴더
+
+1.jpg
+-shape ok
+-color soso ( 적갈색인데 적색으로 일단)
+-피가 아닌 적갈색 변에 mayo score 2
+-
+
+1_1.jpg
+- shape ok
+-color ok
+-mayo score ok
+-
+
+2_4.jpg
+- shape bad : 변기물
+-color ok
+-mayo score ok
+- 
+
+2_6.jpg
+
+-2_4와 거의 동일한 케이스
+
+3.jpg
+- shape soso
+- color ok
+- mayo score ok
+- 
+
+3_3.jpg
+- dominant color algorithm 예외 오류 케이스
+
+4.jpg(good case)
+-stool shape soso
+-stool color ok
+-mayo score ok
+-
+
+4_5.jpg
+-stool shape ok
+-color ok
+-mayo ok
+-
+
+5_1.jpg
+-shape soso (변기물)
+-color ok
+-mayo ok
+-
+
+5_2.jpg
+-stool shape ok
+-color ok
+-mayo ok
+-
+
+6_1.jpg
+특정 영역 그림자 드리운 곳
+-shape bad
+-color ok
+-mayo bad ( 밝은 갈색)
+-
+
+idea : 영역 마스킹 한 곳에서의 edge 검출???
+
+6_2.jpg
+- shape soso : 가루 변들 shape에 영향
+- color ok
+- mayo soso : 밝은 갈색 영향
+-
+
+7_5.jpg(good case)
+- shape ok
+- color ok
+- mayo ok
+-
+
+7_6.jpg
+- shape soso ( 변기 외 영역 촬영됨)
+- color ok
+- mayo soso( 원인 불명)
+
+stool/bloodAlittle 폴더
+
+alittle1.jpg
+- shape soso ( morphology 크기 영향 미세 + 변기물)
+- color ok
+- mayo ok ( mayo case)
+
+alittle2.jpg
+휴지 케이스
+-shape bad or soso
+-color ok
+-mayo bad(mayo case)
+-
+
+alittle4.jpg
+-shape ok
+-color soso(wb problem)
+-mayo ok
+
+alittle5.jpg
+-
+
