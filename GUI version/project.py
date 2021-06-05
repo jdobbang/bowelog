@@ -30,7 +30,7 @@ def whiteBalance(img):
     return balance_img
 
 #mayo score
-def mayo (hsv,stool,img):
+def mayo (hsv,stool):
     
     #blood hsv range1
     lower_red = (0,100,10)
@@ -54,12 +54,6 @@ def mayo (hsv,stool,img):
     kernel2 = np.ones((3, 3), np.uint8)
     blood1 = cv2.morphologyEx(bloodCount, cv2.MORPH_CLOSE, kernel2)
     blood2 = cv2.morphologyEx(blood1, cv2.MORPH_OPEN, kernel2)
-    blood2c = cv2.Canny(blood2,50,150)
-    contours, hierarchy = cv2.findContours(blood2c, 2,1)
-    for i in range(len(contours)):
-       cv2.drawContours(img, [contours[i]], 0, (0, 0, 255), 2)
-       cv2.imshow("bloodrange", img) 
-   
     cv2.imshow("bloodONly",blood2)
     
     # stool/blood area count
@@ -175,10 +169,10 @@ def color(img,hsv,seg,hist, centroids):
         colorState= str("Stool은 적(Red)입니다!!!")
         lower, upper = bound(color_hsv)
     
-    stool,contourSample,stoolState = stoolOnly(img,seg,lower,upper)
-    mayoState=mayo(hsv,stool,img)
+    stool,contourSample= stoolOnly(img,seg,lower,upper)
+    mayoState=mayo(hsv,stool)
     
-    return bar,contourSample,mayoState,colorState,stoolState
+    return bar,contourSample,mayoState,colorState
 # hsv의 범위에 따라 해당 영역 추출 과정 시각화 함수
 def stoolOnly(img,hsv,lower,upper):
         
@@ -204,20 +198,17 @@ def stoolOnly(img,hsv,lower,upper):
     canny = cv2.Canny(result3,50,150)
     contours, hierarchy = cv2.findContours(canny, 2,1)
     
-    #stool 경계면 유사도
-    stoolState = contourSimilarity(contours)
-    
-    #중간 결과 출
+    #중간 결과 출력
 
-    #cv2.imshow("Stool Binary", thresh)   
-    #cv2.imshow("Close + Open", result3)
-    #cv2.imshow("Canny",canny)
-    #for i in range(len(contours)):
-        #cv2.drawContours(img, [contours[i]], 0, (0, 0, 255), 2)
-        #cv2.imshow("src", img) 
+    cv2.imshow("Stool Binary", thresh)   
+    cv2.imshow("Close + Open", result3)
+    cv2.imshow("Canny",canny)
+    for i in range(len(contours)):
+        cv2.drawContours(img, [contours[i]], 0, (0, 0, 255), 2)
+        cv2.imshow("src", img) 
     cv2.imshow("stoolstool",stoolstool)
     
-    return result3 , contours, stoolState
+    return result3 , contours
 
 #dominant stool color에 대한 임의의 범위 설정
 def bound(color_hsv):
@@ -259,35 +250,6 @@ def bound(color_hsv):
         upper = (h+hd,s+sd,v+vd)
 
         return lower , upper
-#similarity
-def contourSimilarity(contourSample):
-    location = './canny/*.jpg'
-    path = glob.glob(location)
-    bristol_img = []
-    # canny들 불러오
-    for img in path:
-        n = cv2.imread(img,cv2.IMREAD_GRAYSCALE)
-        bristol_img.append(n)
-    best_score = float('inf')
-    best_score_number = 0
-    # 7개의 canny edge 이미지를 저장하여 여기서 contour한 후 유사도를 각각 비교
-    for i in range (len(bristol_img)):
-        contours, hierarchy = cv2.findContours(bristol_img[i], 2,1)
-        similarity = cv2.matchShapes(bristol_img[i],contourSample[0],1,0)
-        if best_score > similarity:
-            best_score = similarity
-            best_score_number = i
-
-    state_number = (best_score_number // 2) + 1
-  
-    if state_number == 1 or state_number ==2 or state_number ==3:
-        stoolState = "변비"
-    if state_number == 4 or state_number ==5:
-        stoolState = "정상"
-    if state_number == 6 or state_number ==7:
-        stoolState = "설사"
-
-    return stoolState
 
 #segmentation
 def segmentation(img , K):
@@ -326,13 +288,10 @@ def elbow(X):
 
 #main
 def main(file_record):
-   
-    print("© 2021 Bowelog <contact@bowelog.com>")
-    print("분석중...")
-    
+       
     #program start
     img_ = cv2.imread(file_record['image'],cv2.IMREAD_COLOR)
-    img_ = cv2.resize(img_, dsize=(0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
+    img_ = cv2.resize(img_, dsize=(0, 0), fx=0.3, fy=0.3, interpolation=cv2.INTER_LINEAR)
     
     #white balancing
     img = whiteBalance(img_)
@@ -353,28 +312,26 @@ def main(file_record):
     hist = find_histogram(model) 
     
     #output definition
-    global mayoState,colorState,mayoState2,stoolState
+    global mayoState,colorState
     
     #주요 분석 함수
-    bar,contourSample,mayoState,colorState,stoolState = color(img ,hsv, seg, hist, model.cluster_centers_)
+    bar,contourSample,mayoState,colorState = color(img ,hsv, seg, hist, model.cluster_centers_)
    
     #print
     cv2.imshow("segmented",seg)
-    #cv2.imshow("whiteBalance",img)
+    cv2.imshow("whiteBalance",img)
     cv2.imshow("original",img_)
     cv2.imshow("bar",bar)
     
 #분석 output
-def result(colorState,mayoState,mayoState2,stoolState):
+def result(colorState,mayoState):
     
     label_C.config(text = colorState)
     label_M.config(text = mayoState)
-    label_M2.config(text = mayoState2)
-    label_St.config(text = stoolState)
     
 #open file 기능
 def OpenFile(file_record):
-    file_record['image'] =  askopenfilename(title = "Select file",filetypes = (("image files1","*.JPG"),("image files2","*.png")))
+    file_record['image'] =  askopenfilename(title = "Select file",filetypes = (("image files1","*.JPG"), ("image files2","*.gif")))
     print(file_record['image'])
 
 root = Tk()
@@ -382,47 +339,31 @@ filename_record = {}
 colorState = {}
 mayoState = {}
 
-mayoState2 = {}
-stoolState = {}
-Amount = {}
-
-
-root.title("Bowelog")
-root.geometry("800x800")
+#gui title
+root.title("Stool Project")
+root.geometry("500x400")
 root.resizable(0,0)
 
-#메뉴
+#파일 선택 메
 menubar = Menu(root)
 filemenu = Menu(menubar, tearoff=0)
-#menubar.add_cascade(label="File", menu=filemenu)
-menubar.add_command(label="Open",command = lambda: OpenFile(filename_record))
-#filemenu.add_command(label="Open", command=lambda: OpenFile(filename_record))
+menubar.add_cascade(label="File", menu=filemenu)
+filemenu.add_command(label="Open", command=lambda: OpenFile(filename_record))
 root.config(menu=menubar)
 
-#배경 이미지
-bowelog = PhotoImage(file = "Bowelog2_2.png")
-label = Label(root,image = bowelog)
-
-label.pack()
-
-#분석버튼
-cutestool = PhotoImage(file = "logo.png")
+#분석 버튼
+cutestool = PhotoImage(file = "cutestool.gif")
 btn = Button(root,text = "분석", image = cutestool, command = lambda: main(filename_record))
 btn.pack()
 
-btn2 = Button(root,text = "Result",command = lambda: result(colorState,mayoState,mayoState2,stoolState))
+#결과 출력 버튼
+btn2 = Button(root,text = "결과",command = lambda: result(colorState,mayoState))
 btn2.pack()
 
 label_C = Label(root,text = "color")
 label_M = Label(root,text = "mayo score")
-label_M2 = Label(root,text = "a pattern of blood stool")
-label_St = Label(root,text = "Shape")
-label_Am = Label(root,text = "Amount of stool")
 
 label_C.pack()
 label_M.pack()
-label_M2.pack()
-label_St.pack()
-label_Am.pack()
 root.mainloop()
 
